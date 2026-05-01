@@ -1,23 +1,36 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getIdeaByIdApi } from "../services/ideaService.js";
-import { Loader2 } from "lucide-react";
+import { getIdeaByIdApi, downloadIdeaReportApi } from "../services/ideaService.js";
+import { Loader2, Download } from "lucide-react";
 
 const IdeaDetails = () => {
   const { id } = useParams();
   const [idea, setIdea] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadReport = async () => {
+    setDownloading(true);
+    await downloadIdeaReportApi(id);
+    setDownloading(false);
+  };
 
   useEffect(() => {
     const fetchIdea = async () => {
       setLoading(true);
-      const result = await getIdeaByIdApi(id);
-      
-      if (result.success && result.idea) {
-        setIdea(result.idea);
-      } else {
-        setError(result.message || "Idea not found.");
+      console.log("IdeaDetails ID:", id);
+      try {
+        const result = await getIdeaByIdApi(id);
+
+        if (result.success && result.idea) {
+          setIdea(result.idea);
+        } else {
+          setError(result.message || "Idea not found.");
+        }
+      } catch (err) {
+        console.error("Error fetching idea:", err);
+        setError(err.response?.data?.message || "Idea not found.");
       }
       setLoading(false);
     };
@@ -51,16 +64,27 @@ const IdeaDetails = () => {
   return (
     <main className="min-h-screen bg-slate-950 p-6 pt-24 text-white">
       <div className="max-w-4xl mx-auto">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-cyan-300 mb-8 transition">
-          ← Back to Dashboard
-        </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-cyan-300 transition">
+            ← Back to Dashboard
+          </Link>
+          <button
+            onClick={handleDownloadReport}
+            disabled={downloading || !idea}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-cyan-300 font-semibold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {downloading ? "Generating PDF..." : "Download Report"}
+          </button>
+        </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-10 shadow-2xl backdrop-blur-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none" />
-          
+
           <div className="relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-violet-300">
+                {idea.rank && <span className="text-violet-400 mr-3">#{idea.rank}</span>}
                 {idea.title}
               </h1>
               <span className="self-start md:self-auto px-4 py-1.5 rounded-full bg-white/5 text-slate-200 text-sm font-bold border border-white/10 shrink-0">
@@ -75,42 +99,46 @@ const IdeaDetails = () => {
                   {idea.description}
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
-                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Status</h3>
-                    <div className="capitalize font-bold text-slate-200">
-                      {idea.status || "Pending"}
-                    </div>
-                 </div>
-                 {idea.feasibilityScore !== undefined && (
-                   <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
-                      <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Feasibility</h3>
-                      <div className="font-black text-xl text-green-400">
-                        {idea.feasibilityScore}/100
-                      </div>
-                   </div>
-                 )}
-                 <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
-                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Risk Level</h3>
-                    <div className="font-bold text-slate-200">
-                      {idea.riskLevel || "Not assessed"}
-                    </div>
-                 </div>
-                 <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
-                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Duplicates</h3>
-                    <div className="font-bold text-slate-200">
-                      {idea.duplicatePercentage !== undefined ? `${idea.duplicatePercentage}%` : "0%"}
-                    </div>
-                 </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Status</h3>
+                  <div className="capitalize font-bold text-slate-200">
+                    {idea?.status || "Pending"}
+                  </div>
+                </div>
+                <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Idea Value</h3>
+                  <div className="font-black text-xl text-cyan-400">
+                    {idea?.ideaValue ?? "N/A"}
+                  </div>
+                </div>
+                <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Feasibility</h3>
+                  <div className="font-black text-xl text-green-400">
+                    {idea?.feasibilityScore ?? 0}/100
+                  </div>
+                </div>
+                <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Risk Level</h3>
+                  <div className="font-bold text-slate-200">
+                    {idea?.riskLevel || "Pending"}
+                  </div>
+                </div>
+                <div className="bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Duplicates</h3>
+                  <div className="font-bold text-slate-200">
+                    {idea?.duplicatePercentage ?? 0}%
+                  </div>
+                </div>
               </div>
 
-              {idea.roadmap && idea.roadmap.length > 0 && (
+              {(idea?.roadmap || []).length > 0 && (
                 <div>
                   <h3 className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-widest">Generated Roadmap</h3>
                   <div className="bg-black/20 p-5 md:p-6 rounded-2xl border border-white/5">
                     <ol className="list-decimal list-inside space-y-3 text-slate-300">
-                      {idea.roadmap.map((step, idx) => (
+                      {(idea?.roadmap || []).map((step, idx) => (
                         <li key={idx} className="pl-2 leading-relaxed">{step}</li>
                       ))}
                     </ol>

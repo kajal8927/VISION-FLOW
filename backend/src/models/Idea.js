@@ -50,7 +50,7 @@ const ideaSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "completed", "duplicate", "rejected"],
+      enum: ["pending", "processing", "completed", "duplicate", "rejected", "selected"],
       default: "pending",
     },
     feasibilityScore: {
@@ -76,6 +76,18 @@ const ideaSchema = new mongoose.Schema(
     aiFeedback: {
       type: String,
       default: "AI analysis pending.",
+    },
+    ideaValue: {
+      type: Number,
+      default: 0,
+    },
+    rank: {
+      type: Number,
+      default: null,
+    },
+    selectionReason: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }

@@ -17,7 +17,8 @@
     "helmet": "latest",
     "jsonwebtoken": "latest",
     "mongoose": "latest",
-    "morgan": "latest"
+    "morgan": "latest",
+    "pdfkit": "^0.18.0"
   },
   "devDependencies": {
     "nodemon": "latest"
