@@ -3,23 +3,6 @@ import api from "./api.js";
 const TOKEN_KEY = "visionflow_token";
 const USER_KEY = "visionflow_user";
 
-const demoUsers = [
-  {
-    id: "admin-001",
-    name: "VisionFlow Admin",
-    email: "admin@visionflow.com",
-    password: "admin123",
-    role: "admin",
-  },
-  {
-    id: "user-001",
-    name: "Demo User",
-    email: "user@visionflow.com",
-    password: "user123",
-    role: "user",
-  },
-];
-
 export const saveAuthData = (token, user) => {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -63,65 +46,26 @@ export const loginUser = async (email, password) => {
       token,
       user,
     };
-  } catch {
-    const matchedUser = demoUsers.find(
-      (item) => item.email === email && item.password === password
-    );
-
-    if (!matchedUser) {
-      return {
-        success: false,
-        message: "Invalid email or password.",
-      };
-    }
-
-    const { password: _password, ...safeUser } = matchedUser;
-    const fakeToken = `mock-token-${safeUser.role}-${Date.now()}`;
-
-    saveAuthData(fakeToken, safeUser);
-
+  } catch (error) {
     return {
-      success: true,
-      token: fakeToken,
-      user: safeUser,
+      success: false,
+      message: error.response?.data?.message || "Invalid email or password.",
     };
   }
 };
 
 export const registerUser = async (formData) => {
   try {
-    const response = await api.post("/auth/register", formData);
-
-    const token = response.data?.token;
-    const user = response.data?.user;
-
-    if (!token || !user) {
-      throw new Error("Invalid backend response");
-    }
-
-    saveAuthData(token, user);
+    await api.post("/auth/register", formData);
 
     return {
       success: true,
-      token,
-      user,
+      message: "Account created successfully. Please login to continue.",
     };
-  } catch {
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name: formData.name,
-      email: formData.email,
-      role: "user",
-    };
-
-    const fakeToken = `mock-token-user-${Date.now()}`;
-
-    saveAuthData(fakeToken, newUser);
-
+  } catch (error) {
     return {
-      success: true,
-      token: fakeToken,
-      user: newUser,
+      success: false,
+      message: error.response?.data?.message || "Registration failed. Please try again.",
     };
   }
 };

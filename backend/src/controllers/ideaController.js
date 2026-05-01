@@ -1,33 +1,7 @@
 import Idea from "../models/Idea.js";
+import axios from "axios";
 
-const generateMockAnalysis = (idea) => {
-  const score = Math.floor(Math.random() * 21) + 70;
-  const duplicate = Math.floor(Math.random() * 35);
-
-  return {
-    feasibilityScore: score,
-    duplicatePercentage: duplicate,
-    riskLevel: score >= 85 ? "Low" : score >= 70 ? "Medium" : "High",
-    status: duplicate > 60 ? "duplicate" : "completed",
-    matchedIdeas:
-      duplicate > 20
-        ? ["AI idea evaluation system", "Startup roadmap generator"]
-        : [],
-    roadmap: [
-      "Requirement analysis",
-      "UI/UX design",
-      "Frontend development",
-      "Backend API integration",
-      "Database integration",
-      "AI engine integration",
-      "Testing and deployment",
-    ],
-    aiFeedback:
-      "This idea is feasible for a major project. Add clear user roles, validation, dashboard analytics, and AI scoring to make it stronger.",
-  };
-};
-
-export const createIdea = async (req, res, next) => {
+export const createIdea = async (req, res) => {
   try {
     const {
       title,
@@ -41,11 +15,34 @@ export const createIdea = async (req, res, next) => {
     } = req.body;
 
     if (!title || !problemStatement || !proposedSolution || !description) {
-      res.status(400);
-      throw new Error("Title, problem statement, proposed solution and description are required");
+      return res.status(400).json({ success: false, message: "Title, problem statement, proposed solution and description are required" });
     }
 
-    const analysis = generateMockAnalysis(req.body);
+    // Fetch existing ideas for duplicate checking
+    const existingIdeasData = await Idea.find({ user: req.user._id }).select("title description problemStatement proposedSolution");
+    const existingIdeaTexts = existingIdeasData.map((idea) => 
+      `${idea.title || ""} ${idea.description || ""} ${idea.problemStatement || ""} ${idea.proposedSolution || ""}`.trim()
+    );
+
+    let aiResults;
+    try {
+      const aiEngineUrl = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
+      const aiResponse = await axios.post(`${aiEngineUrl}/analyze`, {
+        title,
+        description,
+        existingIdeas: existingIdeaTexts
+      });
+      aiResults = aiResponse.data;
+    } catch (aiError) {
+      console.error("FastAPI Error:", aiError.message);
+      aiResults = {
+        feasibilityScore: 50,
+        riskLevel: "Medium",
+        duplicatePercentage: 0,
+        roadmap: [],
+        aiFeedback: "AI engine unavailable"
+      };
+    }
 
     const idea = await Idea.create({
       user: req.user._id,
@@ -57,7 +54,12 @@ export const createIdea = async (req, res, next) => {
       budget,
       timeline,
       description,
-      ...analysis,
+      feasibilityScore: aiResults.feasibilityScore,
+      riskLevel: aiResults.riskLevel,
+      duplicatePercentage: aiResults.duplicatePercentage,
+      roadmap: aiResults.roadmap,
+      aiFeedback: aiResults.aiFeedback,
+      status: "completed",
     });
 
     res.status(201).json({
@@ -65,11 +67,15 @@ export const createIdea = async (req, res, next) => {
       idea,
     });
   } catch (error) {
-    next(error);
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-export const getMyIdeas = async (req, res, next) => {
+export const getMyIdeas = async (req, res) => {
   try {
     const ideas = await Idea.find({ user: req.user._id }).sort({ createdAt: -1 });
 
@@ -78,25 +84,27 @@ export const getMyIdeas = async (req, res, next) => {
       ideas,
     });
   } catch (error) {
-    next(error);
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-export const getIdeaById = async (req, res, next) => {
+export const getIdeaById = async (req, res) => {
   try {
     const idea = await Idea.findById(req.params.id);
 
     if (!idea) {
-      res.status(404);
-      throw new Error("Idea not found");
+      return res.status(404).json({ success: false, message: "Idea not found" });
     }
 
     const isOwner = idea.user.toString() === req.user._id.toString();
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {
-      res.status(403);
-      throw new Error("Not allowed to access this idea");
+      return res.status(403).json({ success: false, message: "Not allowed to access this idea" });
     }
 
     res.json({
@@ -104,19 +112,22 @@ export const getIdeaById = async (req, res, next) => {
       idea,
     });
   } catch (error) {
-    next(error);
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-export const updateIdeaStatus = async (req, res, next) => {
+export const updateIdeaStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
     const idea = await Idea.findById(req.params.id);
 
     if (!idea) {
-      res.status(404);
-      throw new Error("Idea not found");
+      return res.status(404).json({ success: false, message: "Idea not found" });
     }
 
     idea.status = status || idea.status;
@@ -127,6 +138,10 @@ export const updateIdeaStatus = async (req, res, next) => {
       idea,
     });
   } catch (error) {
-    next(error);
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

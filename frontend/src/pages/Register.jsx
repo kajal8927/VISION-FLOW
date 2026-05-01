@@ -37,7 +37,7 @@ const Register = () => {
       return;
     }
 
-    navigate("/dashboard");
+    navigate("/login", { state: { message: result.message || "Account created successfully. Please login to continue." } });
   };
 
   return (

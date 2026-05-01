@@ -8,7 +8,7 @@
     "start": "node src/server.js"
   },
   "dependencies": {
-    "axios": "latest",
+    "axios": "^1.15.2",
     "bcryptjs": "latest",
     "cors": "latest",
     "dotenv": "latest",

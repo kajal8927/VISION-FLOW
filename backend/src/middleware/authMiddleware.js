@@ -6,8 +6,7 @@ export const protect = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401);
-      throw new Error("Not authorized, token missing");
+      return res.status(401).json({ success: false, message: "Not authorized, token missing" });
     }
 
     const token = authHeader.split(" ")[1];
@@ -16,21 +15,18 @@ export const protect = async (req, res, next) => {
     req.user = await User.findById(decoded.id).select("-password");
 
     if (!req.user) {
-      res.status(401);
-      throw new Error("User not found");
+      return res.status(401).json({ success: false, message: "User not found" });
     }
 
     next();
   } catch (error) {
-    res.status(401);
-    next(error);
+    return res.status(401).json({ success: false, message: "Not authorized, token failed" });
   }
 };
 
 export const adminOnly = (req, res, next) => {
   if (req.user?.role !== "admin") {
-    res.status(403);
-    throw new Error("Admin access only");
+    return res.status(403).json({ success: false, message: "Admin access only" });
   }
 
   next();
