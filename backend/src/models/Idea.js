@@ -11,7 +11,11 @@ const ideaSchema = new mongoose.Schema(
       type: String,
       required: [true, "Idea title is required"],
       trim: true,
+<<<<<<< HEAD
       maxlength: [300, "Idea title cannot be more than 300 characters"],
+=======
+      maxlength: 150,
+>>>>>>> e2a5599d925553691c60e32d62eb51d55de4abb8
     },
     category: {
       type: String,
