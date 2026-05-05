@@ -1,0 +1,11 @@
+
+
+frontend/.env
+backend/.env
+ai-engine/.envnode_modules
+.env
+venv
+__pycache__
+dist
+build
+*.log
